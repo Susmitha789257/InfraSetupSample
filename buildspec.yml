@@ -15,12 +15,12 @@ phases:
   build:
     commands:
       - echo "Copying website to EC2"
-      - scp -o StrictHostKeyChecking=no -i highend.pem index.html ubuntu@15.152.152.13:/home/ubuntu/
+      - scp -o StrictHostKeyChecking=no -i highend.pem index.nginx-debian.html ubuntu@15.152.152.13:/home/ubuntu/
 
       - echo "Deploying and restarting Nginx"
       - |
         ssh -o StrictHostKeyChecking=no -i highend.pem ubuntu@15.152.152.13 << EOF
-          sudo cp /home/ubuntu/index.nginx-debian.html /var/www/html/index.nginx-debian.html
+          sudo cp /home/ubuntu/index.nginx-debian.html /var/www/html/index.html
           sudo systemctl restart nginx
         EOF
 
