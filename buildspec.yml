@@ -1,29 +1,24 @@
 version: 0.2
-
 phases:
   install:
     commands:
       - echo "Installing SSH client"
       - yum install -y openssh-clients
-
   pre_build:
     commands:
       - echo "Fetching private key from Secrets Manager"
-      - aws secretsmanager get-secret-value --secret-id ec2-ssh-key --query SecretString --output text > highend.pem
+      - aws secretsmanager get-secret-value --secret-id ec2-ssh-privatekey --query SecretString --output text > highend.pem
       - chmod 400 highend.pem
-
   build:
     commands:
       - echo "Copying website to EC2"
-      - scp -o StrictHostKeyChecking=no -i highend.pem index.nginx-debian.html ubuntu@15.152.152.13:/home/ubuntu/
-
+      - scp -o StrictHostKeyChecking=no -i highend.pem index.nginx-debian.html ubuntu@13.208.206.90:/home/ubuntu/
       - echo "Deploying and restarting Nginx"
       - |
-        ssh -o StrictHostKeyChecking=no -i highend.pem ubuntu@15.152.152.13 << EOF
+        ssh -o StrictHostKeyChecking=no -i highend.pem ubuntu@13.208.206.90 << EOF
           sudo cp /home/ubuntu/index.nginx-debian.html /var/www/html/index.html
           sudo systemctl restart nginx
         EOF
-
 artifacts:
   files:
     - '**/*'
