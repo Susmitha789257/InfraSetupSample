@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     AWS_REGION: ap-northeast-3
-    ACCOUNT_ID: 860616632758
+    ACCOUNT_ID: 076640813977
     FRONTEND_REPO: frontend-repo
     BACKEND_REPO: backend-repo
     DATABASE_REPO: database-repo

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 AWS_REGION=ap-northeast-3
-ACCOUNT_ID=860616632758
+ACCOUNT_ID=076640813977
 
 docker login -u AWS -p $(aws ecr get-login-password --region $AWS_REGION) $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
