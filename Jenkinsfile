@@ -12,8 +12,9 @@ pipeline {
     stages {
 
         stage('Run Only Day4 Branch') {
+
             when {
-                expression { env.BRANCH_NAME == 'day4' }
+                expression { env.BRANCH_NAME?.contains('day4') }
             }
 
             stages {
@@ -76,14 +77,5 @@ pipeline {
             }
         }
 
-    }
-
-    post {
-        success {
-            echo "Build and deployment successful"
-        }
-        failure {
-            echo "Pipeline failed"
-        }
     }
 }
