@@ -12,6 +12,9 @@ pipeline {
     stages {
 
         stage('Login to ECR') {
+            when {
+                branch 'day4'
+            }
             steps {
                 sh '''
                 echo "Logging into ECR"
@@ -23,21 +26,22 @@ pipeline {
         }
 
         stage('Build Docker Images') {
+            when {
+                branch 'day4'
+            }
             steps {
                 sh '''
-                echo "Building frontend image"
                 docker build -t $FRONTEND_REPO ./frontend
-
-                echo "Building backend image"
                 docker build -t $BACKEND_REPO ./backend
-
-                echo "Building database image"
                 docker build -t $DATABASE_REPO ./database
                 '''
             }
         }
 
         stage('Tag Images') {
+            when {
+                branch 'day4'
+            }
             steps {
                 sh '''
                 docker tag $FRONTEND_REPO:latest \
@@ -53,10 +57,11 @@ pipeline {
         }
 
         stage('Push Images to ECR') {
+            when {
+                branch 'day4'
+            }
             steps {
                 sh '''
-                echo "Pushing images to ECR"
-
                 docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:latest
                 docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:latest
                 docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$DATABASE_REPO:latest
@@ -65,21 +70,15 @@ pipeline {
         }
 
         stage('Deploy') {
+            when {
+                branch 'day4'
+            }
             steps {
                 sh '''
                 chmod +x deploy.sh
                 ./deploy.sh
                 '''
             }
-        }
-    }
-
-    post {
-        success {
-            echo "Build and deployment successful"
-        }
-        failure {
-            echo "Pipeline failed"
         }
     }
 }
