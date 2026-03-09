@@ -10,11 +10,10 @@ pipeline {
     }
 
     stages {
-
-        stage('Login to ECR') {
-            when {
-                branch 'day4'
+	 when {
+                expression { env.BRANCH_NAME == 'day4' }
             }
+        stage('Login to ECR') {
             steps {
                 sh '''
                 echo "Logging into ECR"
@@ -26,9 +25,6 @@ pipeline {
         }
 
         stage('Build Docker Images') {
-            when {
-                branch 'day4'
-            }
             steps {
                 sh '''
                 docker build -t $FRONTEND_REPO ./frontend
@@ -39,9 +35,6 @@ pipeline {
         }
 
         stage('Tag Images') {
-            when {
-                branch 'day4'
-            }
             steps {
                 sh '''
                 docker tag $FRONTEND_REPO:latest \
@@ -57,9 +50,6 @@ pipeline {
         }
 
         stage('Push Images to ECR') {
-            when {
-                branch 'day4'
-            }
             steps {
                 sh '''
                 docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:latest
@@ -70,9 +60,6 @@ pipeline {
         }
 
         stage('Deploy') {
-            when {
-                branch 'day4'
-            }
             steps {
                 sh '''
                 chmod +x deploy.sh
