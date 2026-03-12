@@ -9,7 +9,7 @@ environment {
 
     ECR_URI      = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
     ECS_CLUSTER  = "my-ecs-cluster"
-    ECS_SERVICE  = "frontend-service"
+    ECS_SERVICE  = "frontend-service1"
 }
 
 stages {
