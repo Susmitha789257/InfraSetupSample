@@ -19,6 +19,8 @@ stages {
     stage('Login to ECR') {
         steps {
             sh '''
+            echo "Login to Amazon ECR"
+
             aws ecr get-login-password --region $AWS_REGION | \
             docker login --username AWS --password-stdin $ECR_URI
             '''
@@ -28,7 +30,9 @@ stages {
     stage('Build Docker Image') {
         steps {
             sh '''
-            docker build -t $REPOSITORY:$IMAGE_TAG .
+            echo "Building Docker image"
+
+            docker build --no-cache -t $REPOSITORY:$IMAGE_TAG .
             '''
         }
     }
@@ -36,15 +40,19 @@ stages {
     stage('Tag Image') {
         steps {
             sh '''
+            echo "Tagging image"
+
             docker tag $REPOSITORY:$IMAGE_TAG \
             $ECR_URI/$REPOSITORY:$IMAGE_TAG
             '''
         }
     }
 
-    stage('Push Image') {
+    stage('Push Image to ECR') {
         steps {
             sh '''
+            echo "Pushing image"
+
             docker push $ECR_URI/$REPOSITORY:$IMAGE_TAG
             '''
         }
@@ -53,6 +61,8 @@ stages {
     stage('Fetch Task Definition') {
         steps {
             sh '''
+            echo "Fetching current task definition"
+
             aws ecs describe-task-definition \
             --task-definition $TASK_FAMILY \
             --query taskDefinition > task-def.json
@@ -63,11 +73,15 @@ stages {
     stage('Create New Revision') {
         steps {
             sh '''
+            echo "Updating container image"
+
             cat task-def.json | jq \
             --arg IMAGE "$ECR_URI/$REPOSITORY:$IMAGE_TAG" \
             '.containerDefinitions[0].image=$IMAGE |
             del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
             > new-task-def.json
+
+            echo "Registering new revision"
 
             aws ecs register-task-definition \
             --cli-input-json file://new-task-def.json
@@ -78,26 +92,37 @@ stages {
     stage('Delete ECS Service') {
         steps {
             sh '''
-            echo "Deleting existing ECS service"
+            echo "Deleting ECS service"
 
             aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
-            --desired-count 0
+            --desired-count 0 || true
 
             aws ecs delete-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_SERVICE \
-            --force
+            --force || true
             '''
         }
     }
 
-    stage('Wait 15 seconds') {
+    stage('Wait for Service Deletion') {
         steps {
             sh '''
-            echo "Waiting for service deletion..."
-            sleep 15
+            echo "Waiting for service to delete..."
+
+            while aws ecs describe-services \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_SERVICE \
+            --query "services[0].status" \
+            --output text 2>/dev/null | grep -q "DRAINING"
+            do
+                echo "Service still draining..."
+                sleep 10
+            done
+
+            echo "Service fully deleted"
             '''
         }
     }
@@ -110,7 +135,7 @@ stages {
             --query 'taskDefinition.revision' \
             --output text)
 
-            echo "Creating new ECS service with revision $REVISION"
+            echo "Creating ECS service with revision $REVISION"
 
             aws ecs create-service \
             --cluster $ECS_CLUSTER \
@@ -121,6 +146,7 @@ stages {
             '''
         }
     }
+
 }
 
 post {
