@@ -19,8 +19,6 @@ stages {
     stage('Login to ECR') {
         steps {
             sh '''
-            echo "Login to Amazon ECR"
-
             aws ecr get-login-password --region $AWS_REGION | \
             docker login --username AWS --password-stdin $ECR_URI
             '''
@@ -30,8 +28,6 @@ stages {
     stage('Build Docker Image') {
         steps {
             sh '''
-            echo "Building Docker image"
-
             docker build -t $REPOSITORY:$IMAGE_TAG .
             '''
         }
@@ -40,19 +36,15 @@ stages {
     stage('Tag Image') {
         steps {
             sh '''
-            echo "Tagging image"
-
             docker tag $REPOSITORY:$IMAGE_TAG \
             $ECR_URI/$REPOSITORY:$IMAGE_TAG
             '''
         }
     }
 
-    stage('Push Image to ECR') {
+    stage('Push Image') {
         steps {
             sh '''
-            echo "Pushing image to ECR"
-
             docker push $ECR_URI/$REPOSITORY:$IMAGE_TAG
             '''
         }
@@ -61,8 +53,6 @@ stages {
     stage('Fetch Task Definition') {
         steps {
             sh '''
-            echo "Fetching current ECS task definition"
-
             aws ecs describe-task-definition \
             --task-definition $TASK_FAMILY \
             --query taskDefinition > task-def.json
@@ -73,15 +63,11 @@ stages {
     stage('Create New Revision') {
         steps {
             sh '''
-            echo "Updating container image"
-
             cat task-def.json | jq \
             --arg IMAGE "$ECR_URI/$REPOSITORY:$IMAGE_TAG" \
             '.containerDefinitions[0].image=$IMAGE |
             del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
             > new-task-def.json
-
-            echo "Registering new revision"
 
             aws ecs register-task-definition \
             --cli-input-json file://new-task-def.json
@@ -89,27 +75,52 @@ stages {
         }
     }
 
-    stage('Update ECS Service') {
+    stage('Delete ECS Service') {
         steps {
             sh '''
-            echo "Getting latest revision"
+            echo "Deleting existing ECS service"
 
+            aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --desired-count 0
+
+            aws ecs delete-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force
+            '''
+        }
+    }
+
+    stage('Wait 15 seconds') {
+        steps {
+            sh '''
+            echo "Waiting for service deletion..."
+            sleep 15
+            '''
+        }
+    }
+
+    stage('Recreate ECS Service') {
+        steps {
+            sh '''
             REVISION=$(aws ecs describe-task-definition \
             --task-definition $TASK_FAMILY \
             --query 'taskDefinition.revision' \
             --output text)
 
-            echo "Deploying revision $REVISION"
+            echo "Creating new ECS service with revision $REVISION"
 
-            aws ecs update-service \
+            aws ecs create-service \
             --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
+            --service-name $ECS_SERVICE \
             --task-definition $TASK_FAMILY:$REVISION \
-            --region $AWS_REGION
+            --desired-count 1 \
+            --launch-type EC2
             '''
         }
     }
-
 }
 
 post {
