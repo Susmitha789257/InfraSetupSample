@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         AWS_REGION = "ap-northeast-3"
-        ACCOUNT_ID = "860616632758"
+        ACCOUNT_ID = "076640813977"
         FRONTEND_REPO = "frontend"
         BACKEND_REPO = "backend"
         DATABASE_REPO = "database"
