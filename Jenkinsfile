@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -7,6 +8,7 @@ pipeline {
         FRONTEND_REPO = "frontend"
         BACKEND_REPO = "backend"
         DATABASE_REPO = "database"
+        CLUSTER_NAME = "ekscluster"
     }
 
     stages {
@@ -56,74 +58,34 @@ pipeline {
                 '''
             }
         }
-
-        stage('Deploy Containers') {
+        stage('Connect to EKS') {
             steps {
                 sh '''
-                echo "Creating Docker network"
-                docker network create app-network || true
-
-                echo "Stopping old containers"
-                docker stop frontend backend mysql-db || true
-                docker rm frontend backend mysql-db || true
-
-                echo "Pulling latest images"
-                docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/database:latest
-                docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-                docker pull $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:latest
-
-                echo "Starting database"
-                docker run -d \
-                --name mysql-db \
-                --network app-network \
-                -p 3306:3306 \
-                $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/database:latest
-
-                sleep 15
-
-                DB_STATUS=$(docker inspect -f '{{.State.Running}}' mysql-db)
-
-                if [ "$DB_STATUS" != "true" ]; then
-                  echo "Database failed to start"
-                  exit 1
-                fi
-
-                echo "Starting backend"
-                docker run -d \
-                --name backend \
-                --network app-network \
-                -p 8000:8000 \
-                $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/backend:latest
-
-                sleep 10
-
-                BACKEND_STATUS=$(docker inspect -f '{{.State.Running}}' backend)
-
-                if [ "$BACKEND_STATUS" != "true" ]; then
-                  echo "Backend failed to start"
-                  exit 1
-                fi
-
-                echo "Starting frontend"
-                docker run -d \
-                --name frontend \
-                --network app-network \
-                -p 80:80 \
-                $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:latest
-
-                sleep 5
-
-                FRONTEND_STATUS=$(docker inspect -f '{{.State.Running}}' frontend)
-
-                if [ "$FRONTEND_STATUS" != "true" ]; then
-                  echo "Frontend failed to start"
-                  exit 1
-                fi
-
-                echo "Deployment completed successfully"
+                aws eks update-kubeconfig \
+                --region $AWS_REGION \
+                --name $CLUSTER_NAME
                 '''
             }
         }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                kubectl apply -f ./k8s/database.yaml
+                kubectl apply -f ./k8s/backend.yaml
+                kubectl apply -f ./k8s/frontend.yaml
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+                steps {
+                    sh '''
+                    kubectl get pods
+                    kubectl get svc
+                    '''
+                }
+            }
     }
 
     post {
@@ -135,3 +97,4 @@ pipeline {
         }
     }
 }
+

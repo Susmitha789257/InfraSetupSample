@@ -80,7 +80,7 @@ DATABASES = {
   'NAME': 'jobportal',
   'USER': 'susmitha',
   'PASSWORD': 'Susmitha789',
-  'HOST': 'mysql-db',
+  'HOST': 'mysql-service',
   'PORT': '3306',
  }
 }
