@@ -1,6 +1,5 @@
-
 pipeline {
-    agent any
+    agent { label 'built-in' }
 
     environment {
         AWS_REGION = "ap-northeast-3"
@@ -58,6 +57,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Connect to EKS') {
             steps {
                 sh '''
@@ -79,13 +79,13 @@ pipeline {
         }
 
         stage('Verify Deployment') {
-                steps {
-                    sh '''
-                    kubectl get pods
-                    kubectl get svc
-                    '''
-                }
+            steps {
+                sh '''
+                kubectl get pods
+                kubectl get svc
+                '''
             }
+        }
     }
 
     post {
@@ -97,4 +97,3 @@ pipeline {
         }
     }
 }
-
